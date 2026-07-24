@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-paper text-ink dark:bg-paper-dark dark:text-ink-dark;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+  ::selection {
+    background: #6e1f2422;
+  }
+
+  /* Hairline rule utility, reused as the site's structural signature */
+  .rule {
+    @apply border-hairline dark:border-hairline-dark;
+  }
+
+  /* Masthead issue-line, the signature element echoed across the site */
+  .issue-line {
+    @apply font-sans text-[11px] tracking-[0.14em] uppercase text-muted dark:text-muted-dark;
+  }
+
+  .eyebrow {
+    @apply font-sans text-[11px] tracking-[0.16em] uppercase text-oxblood dark:text-oxblood-light;
+  }
+
+  /* Article body typography */
+  .article-body {
+    @apply font-serif text-[19px] leading-[1.85] text-ink dark:text-ink-dark;
+  }
+  .article-body p {
+    @apply mb-6;
+  }
+  .article-body h2 {
+    @apply font-display text-[28px] italic font-medium mt-14 mb-5 leading-snug;
+  }
+  .article-body h3 {
+    @apply font-display text-[22px] font-medium mt-10 mb-4;
+  }
+  .article-body blockquote {
+    @apply border-l-2 border-oxblood pl-6 my-8 font-display italic text-[22px] leading-snug text-ink/90 dark:text-ink-dark/90;
+  }
+  .article-body a {
+    @apply text-oxblood dark:text-oxblood-light underline decoration-oxblood/30 underline-offset-4 hover:decoration-oxblood transition-colors;
+  }
+  .article-body img {
+    @apply my-10 w-full;
+  }
+  .article-body code {
+    @apply font-sans text-[15px] bg-ink/[0.05] dark:bg-ink-dark/10 px-1.5 py-0.5 rounded-sm;
+  }
+  .article-body pre {
+    @apply bg-ink text-paper dark:bg-black rounded-sm p-5 overflow-x-auto my-8 text-[14px];
+  }
+  .article-body table {
+    @apply w-full border-collapse my-8 text-[16px];
+  }
+  .article-body th, .article-body td {
+    @apply border border-hairline dark:border-hairline-dark px-4 py-2 text-left;
+  }
+  .article-body sup.footnote {
+    @apply text-oxblood cursor-pointer font-sans;
+  }
+
+  /* Arabic text support */
+  [dir="rtl"], .arabic {
+    font-family: "Noto Naskh Arabic", "Traditional Arabic", serif;
+    direction: rtl;
+    line-height: 2.1;
+    font-size: 1.15em;
+  }
+
+  .admin-input {
+    @apply bg-transparent border rule px-3 py-2.5 text-sm font-sans focus:outline-none focus:border-oxblood transition-colors w-full;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
