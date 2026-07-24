@@ -2,27 +2,51 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { articles } from "@/lib/mock-data";
-import { sampleArticleBody, footnotes, references, tocItems } from "@/lib/article-content";
-import { formatDate } from "@/lib/utils";
+import { prisma } from "@/lib/prisma";
+import { formatDate, addHeadingAnchors } from "@/lib/utils";
 import { ReadingProgress } from "@/components/site/reading-progress";
 import { ShareButtons } from "@/components/site/share-buttons";
 import { TableOfContents } from "@/components/site/table-of-contents";
 import { ArticleRow } from "@/components/site/article-row";
 
-export function generateStaticParams() {
-  return articles.map((a) => ({ slug: a.slug }));
-}
+// Always fetch fresh — article content changes frequently and previews must reflect drafts immediately.
+export const dynamic = "force-dynamic";
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const index = articles.findIndex((a) => a.slug === slug);
-  const article = articles[index];
+
+  let article;
+  try {
+    article = await prisma.article.findUnique({
+      where: { slug },
+      include: { author: true, category: true },
+    });
+  } catch {
+    article = null;
+  }
+
   if (!article) notFound();
 
-  const prev = articles[index - 1];
-  const next = articles[index + 1];
-  const related = articles.filter((a) => a.category === article.category && a.slug !== article.slug).slice(0, 3);
+  // Fire-and-forget view increment; don't block rendering on it.
+  prisma.article.update({ where: { id: article.id }, data: { views: { increment: 1 } } }).catch(() => {});
+
+  const { html, toc } = addHeadingAnchors(article.content);
+
+  const [prev, next, related] = await Promise.all([
+    prisma.article.findFirst({
+      where: { status: "PUBLISHED", createdAt: { lt: article.createdAt } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.article.findFirst({
+      where: { status: "PUBLISHED", createdAt: { gt: article.createdAt } },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.article.findMany({
+      where: { categoryId: article.categoryId, status: "PUBLISHED", slug: { not: article.slug } },
+      include: { author: true, category: true },
+      take: 3,
+    }),
+  ]);
 
   return (
     <main>
@@ -30,66 +54,63 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
       <article className="container pt-12">
         <div className="max-w-3xl mx-auto text-center mb-10">
-          <span className="eyebrow">{article.category}</span>
+          <span className="eyebrow">{article.category.name}</span>
           <h1 className="font-display text-[36px] md:text-[48px] leading-[1.1] font-medium mt-4 mb-6">
             {article.title}
           </h1>
           <p className="text-lg text-muted dark:text-muted-dark leading-relaxed mb-6">{article.summary}</p>
           <div className="flex items-center justify-center gap-3 text-sm font-sans text-muted dark:text-muted-dark">
-            <span>By {article.author}</span>
+            <span>By {article.author.name}</span>
             <span>·</span>
-            <span>{formatDate(article.date)}</span>
+            <span>{formatDate(article.publishedAt ?? article.createdAt)}</span>
             <span>·</span>
             <span>{article.readingTime} min read</span>
+            {article.status !== "PUBLISHED" && (
+              <>
+                <span>·</span>
+                <span className="text-oxblood uppercase tracking-wide text-xs">{article.status}</span>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="relative w-full max-w-5xl mx-auto aspect-[16/8] overflow-hidden bg-hairline/40 mb-16">
-          <Image src={article.cover} alt="" fill priority className="object-cover" />
-        </div>
+        {article.coverImage && (
+          <div className="relative w-full max-w-5xl mx-auto aspect-[16/8] overflow-hidden bg-hairline/40 mb-16">
+            <Image src={article.coverImage} alt="" fill priority className="object-cover" />
+          </div>
+        )}
 
         <div className="max-w-6xl mx-auto grid lg:grid-cols-[180px,1fr,180px] gap-10">
           <div className="hidden lg:block">
-            <TableOfContents items={tocItems} />
+            <TableOfContents items={toc} />
           </div>
 
           <div className="max-w-prose mx-auto w-full">
-            <div className="article-body" dangerouslySetInnerHTML={{ __html: sampleArticleBody }} />
+            <div className="article-body" dangerouslySetInnerHTML={{ __html: html }} />
 
-            {/* Footnotes */}
-            <div className="mt-16 pt-8 border-t rule">
-              <span className="issue-line block mb-4">Footnotes</span>
-              <ol className="flex flex-col gap-3 font-sans text-sm text-muted dark:text-muted-dark">
-                {footnotes.map((f) => (
-                  <li key={f.id} id={`fn-${f.id}`}>
-                    <span className="text-oxblood mr-2">{f.id}.</span>
-                    {f.text}
-                  </li>
+            {article.references.length > 0 && (
+              <div className="mt-10 pt-8 border-t rule">
+                <span className="issue-line block mb-4">References</span>
+                <ul className="flex flex-col gap-2 font-sans text-sm text-muted dark:text-muted-dark italic">
+                  {article.references.map((r: string, i: number) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {article.tags.length > 0 && (
+              <div className="mt-10 pt-8 border-t rule flex flex-wrap gap-2">
+                {article.tags.map((t: string) => (
+                  <span
+                    key={t}
+                    className="text-xs font-sans uppercase tracking-wide px-3 py-1 border rule text-muted dark:text-muted-dark"
+                  >
+                    {t}
+                  </span>
                 ))}
-              </ol>
-            </div>
-
-            {/* References */}
-            <div className="mt-10 pt-8 border-t rule">
-              <span className="issue-line block mb-4">References</span>
-              <ul className="flex flex-col gap-2 font-sans text-sm text-muted dark:text-muted-dark italic">
-                {references.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Tags */}
-            <div className="mt-10 pt-8 border-t rule flex flex-wrap gap-2">
-              {[article.category, "Theology", "Epistemology"].map((t) => (
-                <span
-                  key={t}
-                  className="text-xs font-sans uppercase tracking-wide px-3 py-1 border rule text-muted dark:text-muted-dark"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="hidden lg:flex flex-col gap-6 sticky top-28 h-fit">
@@ -98,7 +119,6 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
 
-        {/* Prev / Next */}
         <div className="max-w-3xl mx-auto grid grid-cols-2 gap-6 mt-20 pt-8 border-t rule">
           {prev ? (
             <Link href={`/articles/${prev.slug}`} className="group flex flex-col">
@@ -118,12 +138,24 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           ) : <div />}
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <div className="max-w-4xl mx-auto mt-20 pt-10 border-t rule pb-20">
             <h2 className="font-display text-[26px] italic font-medium mb-6">Related Articles</h2>
-            {related.map((a) => (
-              <ArticleRow key={a.slug} article={a} />
+            {related.map((a: any) => (
+              <ArticleRow
+                key={a.slug}
+                article={{
+                  slug: a.slug,
+                  title: a.title,
+                  summary: a.summary,
+                  category: a.category.name,
+                  author: a.author.name,
+                  authorSlug: a.author.slug,
+                  date: (a.publishedAt ?? a.createdAt).toISOString(),
+                  readingTime: a.readingTime,
+                  cover: a.coverImage ?? "",
+                }}
+              />
             ))}
           </div>
         )}

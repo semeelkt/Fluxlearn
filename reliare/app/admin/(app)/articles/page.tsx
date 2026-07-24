@@ -6,6 +6,7 @@ import { Plus, Copy, Archive, Eye, Trash2, CheckCircle2 } from "lucide-react";
 
 type Article = {
   id: string;
+  slug: string;
   title: string;
   status: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
   views: number;
@@ -116,7 +117,7 @@ export default function AdminArticlesPage() {
                     <button title="Archive" onClick={() => action(a.id, "archive")} className="hover:text-oxblood transition-colors">
                       <Archive size={15} />
                     </button>
-                    <Link title="Preview" href={`/articles/${a.id}`} target="_blank" className="hover:text-oxblood transition-colors">
+                    <Link title="Preview" href={`/articles/${a.slug}`} target="_blank" className="hover:text-oxblood transition-colors">
                       <Eye size={15} />
                     </Link>
                     <button title="Delete" onClick={() => remove(a.id)} className="hover:text-oxblood transition-colors">
