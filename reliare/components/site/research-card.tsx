@@ -16,7 +16,7 @@ export function ResearchCard({ paper }: { paper: Research }) {
   return (
     <article className="grid md:grid-cols-[180px,1fr] gap-6 py-8 border-b rule first:pt-0">
       <div className="relative w-full aspect-[3/4] md:aspect-auto md:h-full overflow-hidden bg-hairline/40">
-        <Image src={paper.cover} alt="" fill className="object-cover" sizes="180px" />
+        {paper.cover && <Image src={paper.cover} alt="" fill className="object-cover" sizes="180px" />}
       </div>
       <div className="flex flex-col">
         <span className="eyebrow mb-2">{paper.journal ?? "Research"}</span>
