@@ -1,14 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    // eslint isn't a build-time dependency here; run `npm run lint` locally if you add it.
     ignoreDuringBuilds: true,
   },
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "**.s3.amazonaws.com" },
-    ],
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   async headers() {
     return [
