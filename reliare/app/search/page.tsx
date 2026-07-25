@@ -1,23 +1,46 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search as SearchIcon } from "lucide-react";
 import { ArticleRow } from "@/components/site/article-row";
-import { articles } from "@/lib/mock-data";
+
+type Result = {
+  slug: string;
+  title: string;
+  summary: string;
+  category: string;
+  author: string;
+  authorSlug: string;
+  date: string;
+  readingTime: number;
+  cover: string;
+};
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Result[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return articles.filter(
-      (a) =>
-        a.title.toLowerCase().includes(q) ||
-        a.category.toLowerCase().includes(q) ||
-        a.author.toLowerCase().includes(q) ||
-        a.summary.toLowerCase().includes(q)
-    );
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    setLoading(true);
+    const timeout = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setResults(data.results ?? []);
+          setSearched(true);
+        })
+        .finally(() => setLoading(false));
+    }, 300); // debounce so we don't hit the DB on every keystroke
+
+    return () => clearTimeout(timeout);
   }, [query]);
 
   return (
@@ -37,7 +60,8 @@ export default function SearchPage() {
       </div>
 
       <div className="max-w-4xl">
-        {query && results.length === 0 && (
+        {loading && <p className="text-muted dark:text-muted-dark text-sm">Searching…</p>}
+        {!loading && searched && results.length === 0 && (
           <p className="text-muted dark:text-muted-dark">No results for &ldquo;{query}&rdquo;.</p>
         )}
         {results.map((a) => (
